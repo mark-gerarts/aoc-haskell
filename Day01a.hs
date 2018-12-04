@@ -2,7 +2,7 @@ module Day01a where
 
 main :: IO ()
 main = do
-  s <- readFile "input/Day01a.txt"
+  s <- readFile "input/Day01.txt"
   print . sum . map string2int . lines $ s
 
 string2int :: String -> Int

@@ -5,7 +5,7 @@ import Data.Maybe
 
 main :: IO ()
 main = do
-  s <- readFile "input/Day02a.txt"
+  s <- readFile "input/Day02.txt"
   print $ solution s
 
 solution :: String -> String

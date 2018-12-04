@@ -2,7 +2,7 @@ module Day01b where
 
 main :: IO ()
 main = do
-  s <- readFile "input/Day01a.txt"
+  s <- readFile "input/Day01.txt"
   let integerList = map string2int . lines $ s
     in print $ findDuplicate (cycle integerList) [0]
 

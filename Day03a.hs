@@ -14,7 +14,7 @@ type Position = (Int, Int)
 
 main :: IO ()
 main = do
-  s <- readFile "input/Day03a.txt"
+  s <- readFile "input/Day03.txt"
   print $ solve s
 
 solve :: String -> Int
