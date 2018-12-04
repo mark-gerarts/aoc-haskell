@@ -1,29 +1,40 @@
 module Day03a where
 
-import qualified Data.ByteString.Char8 as BC
-import qualified Data.Vector as V
 import Text.Regex.PCRE
+import qualified Data.HashMap.Strict as M
 
 data Claim = Claim
-  { x :: Int
-  , y :: Int
+  { position :: Position
   , width :: Int
   , height :: Int
   , id :: Int
   } deriving (Show)
 
-type Fabric = V.Vector (V.Vector Int)
+type Position = (Int, Int)
 
 main :: IO ()
 main = do
   s <- readFile "input/Day03a.txt"
+  print $ solve s
+
+solve :: String -> Int
+solve s =
   let claims = map parseClaim $ lines s
-      fabric = initFabric 2000
-      appliedFabric = applyClaims fabric claims
-   in print $ countDoubleSquares appliedFabric
+      positions = allPositions claims
+      positionsWithCounts = applyPositions positions M.empty
+      in countOverlapping positionsWithCounts
+
+applyPositions :: [Position] -> M.HashMap Position Int -> M.HashMap Position Int
+applyPositions [] m = m
+applyPositions (p:ps) m = applyPositions ps (M.insertWith inc p 1 m)
+  where
+    inc new old = new + old
+
+countOverlapping :: M.HashMap Position Int -> Int
+countOverlapping = M.size . M.filter (>1)
 
 parseClaim :: String -> Claim
-parseClaim s = Claim x y width height id
+parseClaim s = Claim (x, y) width height id
   where
     matches = s =~ "\\d+" :: AllTextMatches [] String
     [id, x, y, width, height] = map readInt $ getAllTextMatches matches
@@ -31,32 +42,9 @@ parseClaim s = Claim x y width height id
 readInt :: String -> Int
 readInt = read
 
-sampleClaim :: String
-sampleClaim = "#123 @ 3,2: 5x4"
+allPositions :: [Claim] -> [Position]
+allPositions = concatMap getPositions
 
-initFabric :: Int -> Fabric
-initFabric n = V.fromList $ replicate n $ V.fromList $ replicate n 0
-
-incrementFabricAt :: Fabric -> Int -> Int -> Fabric
-incrementFabricAt f x y = (V.//) f [(y, updatedRow)]
-  where
-    row = f V.! y
-    currentVal = row V.! x
-    updatedRow = row V.// [(x, currentVal + 1)]
-
-applyClaims :: Fabric -> [Claim] -> Fabric
-applyClaims = foldl applyClaim
-
-applyClaim :: Fabric -> Claim -> Fabric
-applyClaim f c = foldl (\f' (x,y) -> incrementFabricAt f' x y) f positions
-  where
-    positions = getPositions c
-
-getPositions :: Claim -> [(Int, Int)]
-getPositions (Claim x y w h _) =
-  [(x', y') | x' <- [x .. (x + w)], y' <- [y .. (y + h)]]
-
-countDoubleSquares :: Fabric -> Int
-countDoubleSquares = V.sum . V.map foldRow
-  where
-    foldRow = V.length . V.filter (>1)
+getPositions :: Claim -> [Position]
+getPositions (Claim (x, y) w h _) =
+  [(x', y') | x' <- [x .. (x + w - 1)], y' <- [y .. (y + h - 1)]]
