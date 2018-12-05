@@ -4,34 +4,78 @@ import Data.List
 import Data.Time
 import Text.Regex.PCRE
 import qualified Data.Map.Strict as M
+import qualified Data.Vector as V
 
 -- Time, action
 type LogEntry = (UTCTime, Action)
 data Action = Sleep | WakeUp | BeginShift Int deriving (Show)
-data State = Awake | Asleep deriving (Eq)
-type MinutesSlept = M.Map Int Int
+data State = Awake | Asleep deriving (Eq, Show)
+-- Tuple consists of ID and state. Index can be used to retrieve the minute.
+type StateAtMinute = V.Vector (Int, State)
 
 main :: IO ()
 main = do
-  s <- readFile "input/Day04_test.txt"
-  mapM_ print $ sortOnDate $ parseInput s
+  s <- readFile "input/Day04.txt"
+  print $ solve s
 
 sampleEntry :: String
 sampleEntry = "[1518-10-14 00:05] falls asleep"
 
-addMinutesSlept :: Int -> Int -> MinutesSlept -> MinutesSlept
-addMinutesSlept = M.insertWith (+)
+solve :: String -> Int
+solve s = let entries = parseInput s
+              sam = buildStateAtMinuteMap entries
+              minutesSlept = getMinutesSlept sam M.empty
+              longestSleeper = getLongestSleeper minutesSlept
+              bestMinute = getKeyForMaxValue $ getTimesSleptAtMinuteForId sam longestSleeper
+              in bestMinute
 
-step :: MinutesSlept -> (Int, State, UTCTime) -> LogEntry -> (MinutesSlept, (Int, State, UTCTime))
-step ms (id, state, start) (end, action) =
-  case action of
-    Sleep -> (ms, (id, Asleep, end))
-    WakeUp -> (addMinutesSlept id minutes ms, (id, Awake, end))
-    BeginShift newId ->
-      if state == Awake then (ms, (newId, Awake, end))
-      else (addMinutesSlept id minutes ms, (newId, Awake, end))
+getKeyForMaxValue :: Ord a => M.Map b a -> b
+getKeyForMaxValue m = k
   where
-    minutes = round $ diffUTCTime end start
+    (k,_) = last $ sortOn snd $ M.toList m
+
+getTimesSleptAtMinuteForId :: StateAtMinute -> Int -> M.Map Int Int
+getTimesSleptAtMinuteForId sam id =
+  foldl updateMap M.empty indexed
+  where
+    indexed = zip [0..] sam
+    updateMap c (i, (id', state)) = case state of
+      Awake -> c
+      Asleep -> if id' == id then M.insertWith (+) (i `mod` 60) 1 c
+                else c
+
+getLongestSleeper :: M.Map Int Int -> Int
+getLongestSleeper = getKeyForMaxValue
+
+getMinutesSlept :: StateAtMinute -> M.Map Int Int -> M.Map Int Int
+getMinutesSlept sams ms
+  | V.null sams = ms
+  |
+getMinutesSlept [] ms = ms
+getMinutesSlept ((id,Awake):sams) ms = getMinutesSlept sams ms
+getMinutesSlept ((id,Asleep):sams) ms = getMinutesSlept sams (M.insertWith (+) id 1 ms)
+
+buildStateAtMinuteMap :: [LogEntry] -> StateAtMinute
+buildStateAtMinuteMap entries =
+  fst $ foldl (\(sam, prev) entry -> step sam prev entry) firstStateAtMinute (tail entries)
+  where
+    (firstTime, firstAction) = head entries
+    firstId = case firstAction of BeginShift id -> id
+    firstStateAtMinute = ([], (firstId, Awake, firstTime))
+
+addState :: StateAtMinute -> Int -> State -> Int -> StateAtMinute
+addState sam id s m = sam ++ replicate m (id, s)
+
+step :: StateAtMinute -> (Int, State, UTCTime) -> LogEntry -> (StateAtMinute, (Int, State, UTCTime))
+step sam (id, state, start) (end, action) =
+  case action of
+    Sleep -> (addState sam id Awake minutes, (id, Asleep, end))
+    WakeUp -> (addState sam id Asleep minutes, (id, Awake, end))
+    BeginShift newId ->
+      if state == Awake then (addState sam id Awake minutes, (newId, Awake, end))
+      else (addState sam id Asleep minutes, (newId, Awake, end))
+  where
+    minutes = (`div` 60) $ round $ diffUTCTime end start
 
 sortOnDate :: [LogEntry] -> [LogEntry]
 sortOnDate = sortOn fst
