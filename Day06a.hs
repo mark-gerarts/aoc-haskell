@@ -1,11 +1,13 @@
 module Day06a where
 
 import Text.Regex.PCRE
-import Data.Matrix
 import qualified Data.Map.Strict as M
 import Data.List
 import qualified Data.Vector as V
 import Data.Ord
+import Data.Maybe
+-- I rolled my own matrix library in a futile attempt to get better performance
+import Lib.Matrix
 
 type Pos = (Int, Int)
 data Cell = Empty | ClosestTo Int | Value Int deriving (Eq)
@@ -77,7 +79,15 @@ getClosestValues pos grid = go 1
 
 getValuesAtPositions :: [Pos] -> Grid -> [Int]
 getValuesAtPositions ps grid =
-  [x | Just (Value x) <- map (\(i, j) -> safeGet i j grid) ps]
+  [fromJust val | (i,j) <- ps
+              , let x = safeGet i j grid
+              , isJust x
+              , let val = getValue (fromJust x)
+              , isJust val]
+
+getValue :: Cell -> Maybe Int
+getValue (Value x) = Just x
+getValue _ = Nothing
 
 getSurroundingPositions :: Pos -> Int -> [Pos]
 getSurroundingPositions (x,y) n = nub positions
