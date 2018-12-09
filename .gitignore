@@ -1,1 +1,3 @@
 input/
+.cabal-sandbox
+cabal.sandbox.config

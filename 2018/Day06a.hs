@@ -6,8 +6,7 @@ import Data.List
 import qualified Data.Vector as V
 import Data.Ord
 import Data.Maybe
--- I rolled my own matrix library in a futile attempt to get better performance
-import Lib.Matrix
+import Data.Matrix
 
 type Pos = (Int, Int)
 data Cell = Empty | ClosestTo Int | Value Int deriving (Eq)
@@ -21,7 +20,8 @@ instance Show Cell where
 main :: IO ()
 main = do
   s <- readFile "input/Day06.txt"
-  print $ solve s
+  let grid = transformGrid $ parseInput s
+    in print grid
 
 solve :: String -> Int
 solve input =
@@ -54,28 +54,37 @@ getExteriorIds grid = [x | ClosestTo x <- exteriorVals]
     exteriorVals = nub $ V.toList $ V.concat [top, right, bottom, left]
 
 transformGrid :: Grid -> Grid
-transformGrid grid = foldl (\g' p -> setElem (transformCell p g') p g') grid ps
+transformGrid grid = foldl (\g' p -> setElem (transformCell p g' valuePositions) p g') grid ps
   where
     ps = allPositions (nrows grid) (ncols grid)
+    valuePositions = getAllValuePostions grid
+
+getAllValuePostions :: Grid -> [(Int, Pos)]
+getAllValuePostions g = [(id, pos) | (Just (Value id), pos) <- values]
+  where
+    ps = allPositions (nrows g) (ncols g)
+    values = zip (map (\(i, j) -> safeGet i j g) ps) ps
 
 allPositions :: Int -> Int -> [Pos]
 allPositions n m = [(x,y) | x <- [1..n], y <- [1..m]]
 
-transformCell :: Pos -> Grid -> Cell
-transformCell pos grid = case grid ! pos of
+transformCell :: Pos -> Grid -> [(Int, Pos)]-> Cell
+transformCell pos grid valPositions = case grid ! pos of
   Empty -> if length vals > 1 then Empty
            else ClosestTo (head vals)
-                where vals = getClosestValues pos grid
+                where
+                  vals = getClosestValues pos valPositions
   Value x -> Value x
 
-getClosestValues :: Pos -> Grid -> [Int]
-getClosestValues pos grid = go 1
+getClosestValues :: Pos -> [(Int, Pos)] -> [Int]
+getClosestValues pos valpositions = values
   where
-    go :: Int -> [Int]
-    go n | null values = go (n + 1)
-         | otherwise = values
-      where
-        values = getValuesAtPositions (getSurroundingPositions pos n) grid
+    distances = map (\(id, valpos) -> (id, getDistance pos valpos)) valpositions
+    sorted = sortBy (comparing snd) distances
+    values = map fst $ filter (\(id, dist) -> dist == snd (head sorted)) sorted
+
+getDistance :: Pos -> Pos -> Int
+getDistance (x1, y1) (x2, y2) = abs (x1 - x2) + abs (y1 - y2)
 
 getValuesAtPositions :: [Pos] -> Grid -> [Int]
 getValuesAtPositions ps grid =
