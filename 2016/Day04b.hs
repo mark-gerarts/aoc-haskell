@@ -13,16 +13,16 @@ data Room = Room { _string :: String
 main :: IO ()
 main = do
   s <- readFile "input/Day04.txt"
-  print $ solve s
+  mapM_ print $  solve s
 
-solve :: String -> [String]
-solve input = filter (isInfixOf "North") sentences
+solve :: String -> [(String, Room)]
+solve input = filter (isInfixOf "north" . fst) decryptedRooms
   where
     validRooms = (filter isValid . map parse . lines) input
-    sentences = map decryptRoom validRooms
+    decryptedRooms = map decryptRoom validRooms
 
-decryptRoom :: Room -> String
-decryptRoom (Room s id _) = decrypt id s
+decryptRoom :: Room -> (String, Room)
+decryptRoom (Room s id checksum) = (decrypt id s, (Room s id checksum))
 
 decrypt :: Int -> String -> String
 decrypt n = map (decryptChar n)
