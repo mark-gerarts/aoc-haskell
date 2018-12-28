@@ -2,7 +2,7 @@ module Day07a where
 
 import Text.Regex.PCRE
 
-type IPv7Address = (String, String, String)
+type IPv7Address = ([String], [String])
 
 main :: IO ()
 main = do
@@ -13,11 +13,10 @@ solve :: String -> Int
 solve = length . filter supportsTLS . map parse . lines
 
 parse :: String -> IPv7Address
-parse s = (partA, hypernetSequence, partB)
+parse s = (hypernetSequences, parts)
   where
-    hypernetSequence = s =~ "(?<=\\[).*(?=\\])" :: String
-    partA = s =~ ".*(?=\\[)" :: String
-    partB = s =~ "(?<=\\]).*" :: String
+    hypernetSequences = getAllTextMatches (s =~ "(?<=\\[).*?(?=\\])" :: AllTextMatches [] String)
+    parts = getAllTextMatches (s =~ "(^.*?(?=\\[)|(?<=\\]).*?(?=\\[)|(?<=\\]).*?$)" :: AllTextMatches [] String)
 
 containsAbba :: String -> Bool
 containsAbba [] = False
@@ -26,6 +25,6 @@ containsAbba (a:b:c:d:xs) | a == d && b == c && a /= b = True
 containsAbba _ = False
 
 supportsTLS :: IPv7Address -> Bool
-supportsTLS (partA, hypernetSequence, partB) =
-  (containsAbba partA || containsAbba partB)
-  && (not . containsAbba) hypernetSequence
+supportsTLS (hypernetSequences, parts) =
+  any containsAbba parts
+  && all (not . containsAbba) hypernetSequences
