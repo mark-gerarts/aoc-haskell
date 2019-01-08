@@ -1,4 +1,4 @@
-module Day03a where
+module Day03b where
 
 import Prelude hiding (Left, Right)
 import qualified Data.Map.Strict as M
@@ -17,7 +17,7 @@ solve input = M.size posCount
   where
     dirs = map parse input
     startPos = (0,0)
-    posCount = followDirections dirs (inc M.empty startPos) startPos
+    posCount = followDirections dirs (inc M.empty startPos) (startPos, startPos)
 
 move :: Direction -> Position -> Position
 move Up (x, y) = (x, y + 1)
@@ -35,9 +35,10 @@ parse _ = error "No parse"
 inc :: Ord a => M.Map a Int -> a -> M.Map a Int
 inc m x = M.insertWith (+) x 1 m
 
-followDirections :: [Direction] -> PositionCount -> Position -> PositionCount
+followDirections :: [Direction] -> PositionCount -> (Position, Position) -> PositionCount
 followDirections [] m _ = m
-followDirections (dir:dirs) m p =
-  followDirections dirs (inc m newPosition) newPosition
+followDirections (dir:dirs) m (p1, p2) =
+  -- Alternate between p1 and p2
+  followDirections dirs (inc m newPosition) (p2, newPosition)
   where
-    newPosition = move dir p
+    newPosition = move dir p1
