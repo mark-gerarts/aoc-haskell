@@ -7,10 +7,16 @@ main = do
   print $ length $ filter isValid $ lines s
 
 rule1 :: String -> Bool
-rule1 = not . null . getDoubles . toPairs
+rule1 = not . null . getDoubles . removeConsecutives . toPairs
 
 toPairs :: [a]  -> [[a]]
 toPairs s = [[x, y] | (x, y) <- zip s (tail s)]
+
+removeConsecutives :: Eq a => [a] -> [a]
+removeConsecutives [] = []
+removeConsecutives [x] = [x]
+removeConsecutives (a:b:cs) | a == b = b : removeConsecutives cs
+                            | otherwise = a : removeConsecutives (b : cs)
 
 getDoubles :: Eq a => [a] -> [a]
 getDoubles xs = nub $ filter containsAtLeastTwice xs
