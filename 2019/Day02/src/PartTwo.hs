@@ -22,7 +22,7 @@ findNounAndVerbFor x is =
   where
     inputs = [(n, v) | n <- [0..99], v <- [0..99]]
     results = map (\(n, v) -> (executeWithNounAndVerb n v is, (n, v))) inputs
-    match = find (\(res, _) -> if res == x then True else False) results
+    match = find (\(res, _) -> res == x) results
 
 executeWithNounAndVerb :: Int -> Int -> Instructions -> Int
 executeWithNounAndVerb noun verb is = (V.!) executedList 0
