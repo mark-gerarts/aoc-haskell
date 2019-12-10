@@ -9,11 +9,16 @@ type Position = (Int, Int)
 data Direction = Up | Right | Down | Left deriving (Show)
 type Instruction = (Direction, Int)
 type Path = [Position]
+type Line = (Position, Position)
+type Wire = [Line]
 
 main :: IO ()
 main = do
   input <- readFile "input.txt"
   print $ distanceToNearest (0, 0) $ getIntersections $ parseInput input
+
+-- @todo: rework with segments and their intersections. It isn't feasible
+--        to story every single position.
 
 parseDirection :: Char -> Direction
 parseDirection input = case input of
@@ -29,33 +34,42 @@ parseInstruction input = (direction, amount)
     direction = parseDirection $ head input
     amount = read $ tail input
 
--- Parses the input in a list of paths representing the strings
-parseInput :: String -> [Path]
-parseInput input = foldl (\c p -> c ++ [walk (0, 0) p]) [firstPath] $ tail instructions
-  where
-    instructions = map (map parseInstruction) $ map (splitOn ",") $ lines input
-    firstPath = walk (0,0) $ head instructions
+-- Parses the input in a list of wires
+parseInput :: String -> [Wire]
+parseInput = map (pathToWire . walk (0, 0) . parseInstructions) . lines
 
+parseInstructions :: String -> [Instruction]
+parseInstructions = map parseInstruction . splitOn ","
+
+-- Constructs a path of points which form the lines of the wire
 walk :: Position -> [Instruction] -> Path
-walk start = nub . foldl (\c x -> c ++ walkSingle (last c) x) [start]
-
--- "Walks" according to the given input, gathering all positions seen inbetween.
-walkSingle :: Position -> Instruction -> Path
-walkSingle (currentX, currentY) (direction, amount) =
-  case direction of
-    Up -> [(currentX, y) | y <- [currentY..(currentY + amount)]]
-    Down -> [(currentX, y) | y <- enumFromThenTo currentY (currentY - 1) (currentY - amount)]
-    Right -> [(x, currentY) | x <- [currentX..(currentX + amount)]]
-    Left -> [(x, currentY) | x <- enumFromThenTo currentX (currentX - 1) (currentX- amount)]
-
-getIntersections :: [Path] -> [Position]
-getIntersections paths = S.toList $ S.delete (0, 0) intersections
+walk start = foldl (\path instruction -> path ++ [nextPosition path instruction]) [start]
   where
-    sets = map S.fromList paths
-    intersections = foldl1 S.intersection sets
+    nextPosition path = followInstruction (last path)
+
+pathToWire :: Path -> Wire
+pathToWire path = zip path (tail path)
+
+followInstruction :: Position -> Instruction -> Position
+followInstruction (startX, startY) (direction, amount) =
+    case direction of
+        Up -> (startX, startY + amount)
+        Down -> (startX, startY - amount)
+        Right -> (startX + amount, startY)
+        Left -> (startX - amount, startX)
+
+getIntersections :: [Wire] -> [Position]
+getIntersections paths = undefined
+
+intersects :: Line -> Line -> Bool
+intersects ((ax1, ay1), (ax2, ay2)) ((bx1, by1), (bx2, by2)) = regularIntersect
+    where
+      regularIntersect = ((ax1 <= bx1 && ax2 >= bx1) || (ax2 <= bx1 && ax1 >= bx1))
+        && ((by1 <= ay1 && by2 >= ay1) || (by2 <= ay1 && by1 >= ay1))
+-- @todo
 
 distanceToNearest :: Position -> [Position] -> Int
-distanceToNearest start positions = minimum $ map (\p -> distance start p) positions
+distanceToNearest start positions = minimum $ map (distance start) positions
 
 distance :: Position -> Position -> Int
 distance (x1, y1) (x2, y2) = abs (x1 - x2) +  abs(y1 - y2)
