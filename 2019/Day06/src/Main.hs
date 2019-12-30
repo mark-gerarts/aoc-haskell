@@ -1,5 +1,6 @@
 module Main where
 
+import Data.List
 import Data.List.Split
 import qualified Data.Map as M
 
@@ -11,6 +12,7 @@ type OrbitMap = M.Map Object Object
 instance Eq Object where
   COM == COM = True
   Object _ == COM = False
+  COM == Object _ = False
   Object a == Object b = a == b
 
 instance Ord Object where
@@ -22,6 +24,27 @@ main = do
   input <- readFile "input.txt"
   let orbitMap = parseInput input
   print $ sumAllOrbits orbitMap
+
+mainPartTwo :: IO ()
+mainPartTwo = do
+  input <- readFile "input.txt"
+  let orbitMap = parseInput input
+  print $ getDistanceToSanta orbitMap
+
+-- We calculate the distance between santa and me by collecting all the objects
+-- both santa and I orbit (the "traces"). Once we have that, we remove the
+-- common orbits. What's left is the route I have to travel to santa.
+getDistanceToSanta :: OrbitMap -> Int
+getDistanceToSanta orbitMap = length $ (myTrace \\ santaTrace) ++ (santaTrace \\ myTrace)
+  where
+    santaTrace = getOrbitTrace (Object "SAN") orbitMap
+    myTrace = getOrbitTrace (Object "YOU") orbitMap
+
+getOrbitTrace :: Object -> OrbitMap -> [Object]
+getOrbitTrace COM _ = []
+getOrbitTrace object orbitMap = next : getOrbitTrace next orbitMap
+  where
+    next = orbitMap M.! object
 
 orbits :: Object -> Object -> Orbit
 orbits a b = (a, b)
@@ -57,16 +80,3 @@ parseInput :: String -> OrbitMap
 parseInput input = foldl (\map (a,b) -> M.insert b a map) M.empty orbits
   where
     orbits = (map parseSingle . lines) input
-
-testInput :: String
-testInput = "COM)B\n\
-\B)C\n\
-\C)D\n\
-\D)E\n\
-\E)F\n\
-\B)G\n\
-\G)H\n\
-\D)I\n\
-\E)J\n\
-\J)K\n\
-\K)L"
